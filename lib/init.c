@@ -188,6 +188,15 @@ void rpc_set_interface(struct rpc_context *rpc, const char *ifname)
 }
 #endif
 
+void rpc_set_client_addr(struct rpc_context *rpc, const char *addr)
+{
+	assert(rpc->magic == RPC_CONTEXT_MAGIC);
+
+	if (addr) {
+		strncpy(rpc->client_addr, addr, sizeof(rpc->client_addr) - 1);
+	}
+}
+
 void rpc_set_debug(struct rpc_context *rpc, int level)
 {
 	assert(rpc->magic == RPC_CONTEXT_MAGIC);

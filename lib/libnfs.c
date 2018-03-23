@@ -245,6 +245,12 @@ nfs_set_interface(struct nfs_context *nfs, const char *ifname)
 }
 #endif
 
+void
+nfs_set_client_addr(struct nfs_context *nfs, const char *client_addr)
+{
+	rpc_set_client_addr(nfs_get_rpc_context(nfs), client_addr);
+}
+
 static int
 nfs_set_context_args(struct nfs_context *nfs, const char *arg, const char *val)
 {
@@ -270,6 +276,8 @@ nfs_set_context_args(struct nfs_context *nfs, const char *arg, const char *val)
 	} else if (!strcmp(arg, "if")) {
 		nfs_set_interface(nfs, val);
 #endif
+	} else if (!strcmp(arg, "addr")) {
+		nfs_set_client_addr(nfs, val);
 	} else if (!strcmp(arg, "version")) {
 		if (nfs_set_version(nfs, atoi(val)) < 0) {
 			nfs_set_error(nfs, "NFS version %d is not supported",

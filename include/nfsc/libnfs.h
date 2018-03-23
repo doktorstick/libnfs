@@ -128,6 +128,11 @@ EXTERN void nfs_set_auth(struct nfs_context *nfs, struct AUTH *auth);
 EXTERN void nfs_set_interface(struct nfs_context *nfs, const char *ifname);
 
 /*
+ * Used if you need to bind to a specific address.
+ */
+EXTERN void nfs_set_client_addr(struct nfs_context *nfs, const char *ipaddr);
+
+/*
  * When an operation failed, this function can extract a detailed error string.
  */
 EXTERN char *nfs_get_error(struct nfs_context *nfs);

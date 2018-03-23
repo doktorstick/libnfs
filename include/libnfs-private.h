@@ -149,6 +149,7 @@ struct rpc_context {
 	int debug;
 	int timeout;
 	char ifname[IFNAMSIZ];
+	char client_addr[40];  /* accn for ipv6 */
 
         /* Is a server context ? */
         int is_server_context;
@@ -222,6 +223,7 @@ struct sockaddr *rpc_get_recv_sockaddr(struct rpc_context *rpc);
 void rpc_set_autoreconnect(struct rpc_context *rpc, int num_retries);
 
 void rpc_set_interface(struct rpc_context *rpc, const char *ifname);
+void rpc_set_client_addr(struct rpc_context *rpc, const char *addr);
 
 void rpc_set_tcp_syncnt(struct rpc_context *rpc, int v);
 void rpc_set_pagecache(struct rpc_context *rpc, uint32_t v);

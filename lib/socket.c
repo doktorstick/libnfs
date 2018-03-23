@@ -592,6 +592,9 @@ static int rpc_connect_sockaddr_async(struct rpc_context *rpc)
 
 				switch (s->ss_family) {
 				case AF_INET:
+					if(*rpc->client_addr) {
+						((struct sockaddr_in *)&ss)->sin_addr.s_addr = inet_addr(rpc->client_addr);
+					}
 					((struct sockaddr_in *)&ss)->sin_port = port;
 					((struct sockaddr_in *)&ss)->sin_family      = AF_INET;
 #ifdef HAVE_SOCKADDR_LEN
