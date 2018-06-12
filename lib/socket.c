@@ -602,6 +602,13 @@ static int rpc_connect_sockaddr_async(struct rpc_context *rpc)
 #endif
 					break;
 				case AF_INET6:
+					if(*rpc->client_addr) {
+						int iprc = inet_pton(AF_INET6, rpc->client_addr, &((struct sockaddr_in6 *)&ss)->sin6_addr);
+						if (iprc <= 0) {
+							rpc_set_error(rpc, "Invalid IPv6 address: %s", rpc->client_addr);
+							return 1;
+						}
+					}
 					((struct sockaddr_in6 *)&ss)->sin6_port = port;
 					((struct sockaddr_in6 *)&ss)->sin6_family      = AF_INET6;
 #ifdef HAVE_SOCKADDR_LEN

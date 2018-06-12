@@ -27,6 +27,10 @@
 #include <net/if.h>
 #endif
 
+#ifdef HAVE_NETINET_IN_H
+#include <netinet/in.h>
+#endif
+
 #ifndef WIN32
 #include <sys/socket.h>  /* struct sockaddr_storage */
 #endif
@@ -149,7 +153,11 @@ struct rpc_context {
 	int debug;
 	int timeout;
 	char ifname[IFNAMSIZ];
-	char client_addr[40];  /* accn for ipv6 */
+
+#ifndef INET6_ADDRSTRLEN
+#define INET6_ADDRSTRLEN 46
+#endif
+	char client_addr[INET6_ADDRSTRLEN];
 
         /* Is a server context ? */
         int is_server_context;
