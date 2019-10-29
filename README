@@ -25,9 +25,9 @@ examples/nfsclient-sync.c provides examples on how to use this API
 
 NFSv4:
 ======
-NFSv4 is supported but only for the RAW ASYNC interface.
-Examples/nfsv4-cat.c is a "simple" example to illustrate how to use
-NFSv4 to connect to a server and read a file off the server.
+NFSv3 is the default but NFSv4 can be selected either by using the URL argument
+version=4 or programatically calling nfs_set_version(nfs, NFS_V4) before
+connecting to the server/share.
 
 SERVER SUPPORT:
 ===============
@@ -67,8 +67,10 @@ Arguments supported by libnfs are :
                          to the application.
  if=<interface>    : Interface name (e.g., eth1) to bind; requires `root`
  version=<3|4>     : NFS Version. Default is 3.
-                     This is just a placeholder for now. NFSv4 support is not
-		     yet functional.
+ nfsport=<port>    : Use this port for NFS instead of using the portmapper.
+ mountport=<port>  : Use this port for the MOUNT protocol instead of
+                     using portmapper. This argument is ignored for NFSv4
+                     as it does not use the MOUNT protocol.
 
 Auto_traverse_mounts
 ====================
@@ -150,6 +152,11 @@ Then try things like
 LD_NFS_DEBUG=9 LD_PRELOAD=./ld_nfs.so cat nfs://127.0.0.1/data/tmp/foo123
 
 LD_NFS_DEBUG=9 LD_PRELOAD=./ld_nfs.so cp nfs://127.0.0.1/data/tmp/foo123 nfs://127.0.0.1/data/tmp/foo123.copy
+
+LD_NFS_UID and LD_NFS_GID can be used to fake the uid andthe gid in the nfs context.
+This can be useful on "insecure" enabled NFS share to make the server trust you as a root.
+You can try to run as a normal user things like :
+LD_NFS_DEBUG=9 LD_NFS_UID=0 LD_NFS_GID=0 LD_PRELOAD=./ld_nfs.so chown root:root nfs://127.0.0.1/data/tmp/foo123
 
 This is just a toy preload module. Don't open bugs if it does not work. Send
 patches to make it better instead.

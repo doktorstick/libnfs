@@ -33,7 +33,7 @@
 
 void usage(void)
 {
-	fprintf(stderr, "Usage: prog-symlink <url> <cwd> <target> <link>\n");
+	fprintf(stderr, "Usage: prog_symlink <url> <cwd> <target> <link>\n");
 	exit(1);
 }
 

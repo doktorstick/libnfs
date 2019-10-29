@@ -40,6 +40,8 @@
 #endif
 
 #include "libnfs-zdr.h"
+#include "../nfs/libnfs-raw-nfs.h"
+#include "../nfs4/libnfs-raw-nfs4.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -184,7 +186,7 @@ struct rpc_pdu {
 #define PDU_DISCARD_AFTER_SENDING 0x00000001
         uint32_t flags;
 
-	long timeout;
+	uint64_t timeout;
 };
 
 void rpc_reset_queue(struct rpc_queue *q);
@@ -243,16 +245,13 @@ int rpc_get_timeout(struct rpc_context *rpc);
 int rpc_add_fragment(struct rpc_context *rpc, char *data, uint32_t size);
 void rpc_free_all_fragments(struct rpc_context *rpc);
 int rpc_is_udp_socket(struct rpc_context *rpc);
-long rpc_current_time(void);
+uint64_t rpc_current_time(void);
 
 void *zdr_malloc(ZDR *zdrs, uint32_t size);
 
 
 struct nfs_cb_data;
 void free_nfs_cb_data(struct nfs_cb_data *data);
-
-int check_nfs_error(struct nfs_context *nfs, int status,
-		    struct nfs_cb_data *data, void *command_data);
 
 struct nfs_specdata {
         uint32_t specdata1;
@@ -298,7 +297,17 @@ struct nfs_context {
        int auto_traverse_mounts;
        struct nested_mounts *nested_mounts;
 
-       int version;
+        int version;
+        int nfsport;
+        int mountport;
+
+        /* NFSv4 specific fields */
+        verifier4 verifier;
+        char *client_name;
+        uint64_t clientid;
+        verifier4 setclientid_confirm;
+        uint32_t seqid;
+        int has_lock_owner;
 };
 
 typedef int (*continue_func)(struct nfs_context *nfs, struct nfs_attr *attr,
@@ -369,13 +378,25 @@ struct nfs_pagecache {
        time_t ttl;
 };
 
+struct stateid {
+        uint32_t seqid;
+        char other[12];
+};
+
 struct nfsfh {
-       struct nfs_fh fh;
-       int is_sync;
-       int is_append;
-       uint64_t offset;
-       struct nfs_readahead ra;
-       struct nfs_pagecache pagecache;
+        struct nfs_fh fh;
+        int is_sync;
+        int is_append;
+        int is_dirty;
+        uint64_t offset;
+        struct nfs_readahead ra;
+        struct nfs_pagecache pagecache;
+
+        /* NFSv4 */
+        struct stateid stateid;
+        /* locking */
+        uint32_t lock_seqid;
+        struct stateid lock_stateid;
 };
 
 const struct nfs_fh *nfs_get_rootfh(struct nfs_context *nfs);
@@ -431,7 +452,7 @@ int nfs3_mknod_async(struct nfs_context *nfs, const char *path, int mode,
 int nfs3_mount_async(struct nfs_context *nfs, const char *server,
 		     const char *export, nfs_cb cb, void *private_data);
 int nfs3_open_async(struct nfs_context *nfs, const char *path, int flags,
-                    nfs_cb cb, void *private_data);
+                    int mode, nfs_cb cb, void *private_data);
 int nfs3_opendir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                        void *private_data);
 int nfs3_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
@@ -448,14 +469,17 @@ int nfs3_rmdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                      void *private_data);
 int nfs3_stat_async(struct nfs_context *nfs, const char *path,
                     nfs_cb cb, void *private_data);
-int nfs3_stat64_async_internal(struct nfs_context *nfs, const char *path,
-                               int no_follow, nfs_cb cb, void *private_data);
+int nfs3_stat64_async(struct nfs_context *nfs, const char *path,
+                      int no_follow, nfs_cb cb, void *private_data);
 int nfs3_statvfs_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                        void *private_data);
+int nfs3_statvfs64_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
+                         void *private_data);
 int nfs3_symlink_async(struct nfs_context *nfs, const char *oldpath,
                        const char *newpath, nfs_cb cb, void *private_data);
 int nfs3_truncate_async(struct nfs_context *nfs, const char *path,
                         uint64_t length, nfs_cb cb, void *private_data);
+int nfs3_umount_async(struct nfs_context *nfs, nfs_cb cb, void *private_data);
 int nfs3_unlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
                       void *private_data);
 int nfs3_utime_async(struct nfs_context *nfs, const char *path,
@@ -466,8 +490,86 @@ int nfs3_utimes_async_internal(struct nfs_context *nfs, const char *path,
 int nfs3_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
                      uint64_t count, const void *buf, nfs_cb cb,
                      void *private_data);
-  
-        
+   
+int nfs4_access_async(struct nfs_context *nfs, const char *path, int mode,
+                      nfs_cb cb, void *private_data);
+int nfs4_access2_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
+                       void *private_data);
+int nfs4_chdir_async(struct nfs_context *nfs, const char *path,
+                     nfs_cb cb, void *private_data);
+int nfs4_chmod_async_internal(struct nfs_context *nfs, const char *path,
+                              int no_follow, int mode, nfs_cb cb,
+                              void *private_data);
+int nfs4_chown_async_internal(struct nfs_context *nfs, const char *path,
+                              int no_follow, int uid, int gid,
+                              nfs_cb cb, void *private_data);
+int nfs4_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
+                     void *private_data);
+int nfs4_create_async(struct nfs_context *nfs, const char *path, int flags,
+                      int mode, nfs_cb cb, void *private_data);
+int nfs4_fchmod_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode,
+                      nfs_cb cb, void *private_data);
+int nfs4_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid,
+                      int gid, nfs_cb cb, void *private_data);
+int nfs4_fcntl_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                     enum nfs4_fcntl_op cmd, void *arg,
+                     nfs_cb cb, void *private_data);
+int nfs4_fstat64_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
+                       void *private_data);
+int nfs4_fsync_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb,
+                     void *private_data);
+int nfs4_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                         uint64_t length, nfs_cb cb, void *private_data);
+int nfs4_link_async(struct nfs_context *nfs, const char *oldpath,
+		    const char *newpath, nfs_cb cb, void *private_data);
+int nfs4_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                     int64_t offset, int whence, nfs_cb cb, void *private_data);
+int nfs4_lockf_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                     enum nfs4_lock_op op, uint64_t count,
+                     nfs_cb cb, void *private_data);
+int nfs4_mkdir2_async(struct nfs_context *nfs, const char *path, int mode,
+                      nfs_cb cb, void *private_data);
+int nfs4_mknod_async(struct nfs_context *nfs, const char *path, int mode,
+                     int dev, nfs_cb cb, void *private_data);
+int nfs4_mount_async(struct nfs_context *nfs, const char *server,
+		     const char *export, nfs_cb cb, void *private_data);
+int nfs4_open_async(struct nfs_context *nfs, const char *path, int flags,
+                    int mode, nfs_cb cb, void *private_data);
+int nfs4_opendir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
+                       void *private_data);
+int nfs4_pread_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                              uint64_t offset, size_t count, nfs_cb cb,
+                              void *private_data, int update_pos);
+int nfs4_pwrite_async_internal(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                               uint64_t offset, size_t count, const char *buf,
+                               nfs_cb cb, void *private_data, int update_pos);
+int nfs4_readlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
+                        void *private_data);
+int nfs4_rename_async(struct nfs_context *nfs, const char *oldpath,
+		      const char *newpath, nfs_cb cb, void *private_data);
+int nfs4_rmdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
+                     void *private_data);
+int nfs4_stat64_async(struct nfs_context *nfs, const char *path,
+                      int no_follow, nfs_cb cb, void *private_data);
+int nfs4_statvfs_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
+                       void *private_data);
+int nfs4_statvfs64_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
+                         void *private_data);
+int nfs4_symlink_async(struct nfs_context *nfs, const char *oldpath,
+                       const char *newpath, nfs_cb cb, void *private_data);
+int nfs4_truncate_async(struct nfs_context *nfs, const char *path,
+                        uint64_t length, nfs_cb cb, void *private_data);
+int nfs4_unlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb,
+                      void *private_data);
+int nfs4_utime_async(struct nfs_context *nfs, const char *path,
+                     struct utimbuf *times, nfs_cb cb, void *private_data);
+int nfs4_utimes_async_internal(struct nfs_context *nfs, const char *path,
+                               int no_follow, struct timeval *times,
+                               nfs_cb cb, void *private_data);
+int nfs4_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh,
+                     uint64_t count, const void *buf, nfs_cb cb,
+                     void *private_data);
+
 #ifdef __cplusplus
 }
 #endif

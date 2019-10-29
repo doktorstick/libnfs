@@ -19,12 +19,13 @@ libnfs_la_SOURCES = \
 	libnfs.c \
 	libnfs-sync.c \
 	libnfs-zdr.c \
-	nfs3.c \
+	nfs_v3.c \
+	nfs_v4.c \
 	pdu.c \
 	socket.c \
 	../win32/win32_compat.c
 
-SOCURRENT=11
+SOCURRENT=13
 SOREVISION=0
 SOAGE=0
 libnfs_la_LDFLAGS = -version-info $(SOCURRENT):$(SOREVISION):$(SOAGE)

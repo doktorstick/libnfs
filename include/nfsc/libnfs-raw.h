@@ -219,6 +219,30 @@ EXTERN int rpc_connect_program_async(struct rpc_context *rpc,
                                      rpc_cb cb, void *private_data);
 
 /*
+ * Async function to connect to a specific RPC program/version.
+ * This connects directly to the specified port without using portmapper.
+ *
+ * Function returns
+ *  0 : The connection was initiated. The callback will be invoked once the
+ *      connection establish finishes.
+ * <0 : An error occured when trying to set up the connection.
+ *      The callback will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ * RPC_STATUS_SUCCESS : The tcp connection was successfully established.
+ *                      data is NULL.
+ * RPC_STATUS_ERROR   : The connection failed to establish.
+ *                      data is the error string.
+ * RPC_STATUS_CANCEL  : The connection attempt was aborted before it could
+ *                      complete.
+ *                    : data is NULL.
+ */
+EXTERN int rpc_connect_port_async(struct rpc_context *rpc, const char *server,
+                                  int port,
+                                  int program, int version,
+                                  rpc_cb cb, void *private_data);
+
+/*
  * When disconnecting a connection all commands in flight will be
  * called with a callback status RPC_STATUS_ERROR. Data will be the
  * error string for the disconnection.
@@ -1484,9 +1508,9 @@ EXTERN int rpc_nfs2_lookup_async(struct rpc_context *rpc, rpc_cb cb,
  *                      data is NULL.
  */
 struct READLINK2args;
-EXTERN int rpc_nfs32_readlink_async(struct rpc_context *rpc, rpc_cb cb,
-                                    struct READLINK2args *args,
-                                    void *private_data);
+EXTERN int rpc_nfs2_readlink_async(struct rpc_context *rpc, rpc_cb cb,
+                                   struct READLINK2args *args,
+                                   void *private_data);
 
 /*
  * Call NFS2/READ
@@ -2200,6 +2224,12 @@ struct NSM1_NOTIFYargs;
 EXTERN int rpc_nsm1_notify_async(struct rpc_context *rpc, rpc_cb cb,
                                  struct NSM1_NOTIFYargs *args,
                                  void *private_data);
+
+/*
+ * NFS v4 FUNCTIONS
+ */
+EXTERN char *nfsstat4_to_str(int error);
+EXTERN int nfsstat4_to_errno(int error);
 
 /*
  * Call NFS4/NULL

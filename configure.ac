@@ -1,5 +1,5 @@
 AC_PREREQ(2.50)
-AC_INIT([libnfs], [2.0.0], [ronniesahlberg@gmail.com])
+AC_INIT([libnfs], [4.0.0], [ronniesahlberg@gmail.com])
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([-Wall foreign subdir-objects])
 AC_CANONICAL_HOST
@@ -25,11 +25,13 @@ fi
 AC_SYS_LARGEFILE
 
 #option: utils
+MAYBE_UTILS="utils"
 AC_ARG_ENABLE([utils],
               [AC_HELP_STRING([--enable-utils],
                               [Build util programs])],
-	      [MAYBE_UTILS=""],
-	      [MAYBE_UTILS="utils"])
+	      [if test $enableval = no ; then
+	    	    MAYBE_UTILS=""
+	       fi])
 AC_SUBST(MAYBE_UTILS)
 
 #option: examples
@@ -79,6 +81,22 @@ else
   AC_MSG_RESULT(no)
   AC_MSG_NOTICE(SO_BINDTODEVICE support for if= support is missing.)
   AC_MSG_NOTICE(Compiling without if= support.)
+fi
+
+AC_MSG_CHECKING(whether getpwnam() is available)
+AC_TRY_COMPILE([
+	#include <sys/types.h>
+	#include <pwd.h>
+], [
+        struct passwd *pwd = getpwnam("nobody");
+], ac_cv_have_getpwnam=yes, ac_cv_have_getpwnam=no)
+if test "$ac_cv_have_getpwnam" = yes ; then
+  AC_MSG_RESULT(yes)
+  AC_DEFINE(HAVE_GETPWNAM, 1, [Whether we have getpwnam()])
+else
+  AC_MSG_RESULT(no)
+  AC_MSG_NOTICE(getpwnam() support is missing.)
+  AC_MSG_NOTICE(Compiling without getpwnam() support.)
 fi
 
 AC_ARG_ENABLE([werror], [AS_HELP_STRING([--disable-werror],

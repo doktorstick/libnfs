@@ -1,3 +1,4 @@
+/* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
 /*
    Copyright (C) 2010 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
 
@@ -23,7 +24,7 @@
 #endif
 
 #ifdef WIN32
-#include "win32_compat.h"
+#include <win32/win32_compat.h>
 #endif
 
 #ifdef HAVE_NETINET_IN_H
@@ -224,6 +225,16 @@ int rpc_queue_pdu(struct rpc_context *rpc, struct rpc_pdu *pdu)
 
 	if (rpc->timeout > 0) {
 		pdu->timeout = rpc_current_time() + rpc->timeout;
+#ifndef HAVE_CLOCK_GETTIME
+		/* If we do not have GETTIME we fallback to time() which
+		 * has 1s granularity for its timestamps.
+		 * We thus need to bump the timeout by 1000ms
+		 * so that the PDU will timeout within 1.0 - 2.0 seconds.
+		 * Otherwise setting a 1s timeout would trigger within
+		 * 0.001 - 1.0s.
+		 */
+		pdu->timeout += 1000;
+#endif
 	} else {
 		pdu->timeout = 0;
 	}
@@ -494,6 +505,11 @@ int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size)
 		zdr_destroy(&zdr);
 		for (fragment = rpc->fragments; fragment; fragment = fragment->next) {
 			total += fragment->size;
+                        if (total < fragment->size) {
+                                rpc_set_error(rpc, "Fragments too large");
+                                rpc_free_all_fragments(rpc);
+                                return -1;
+                        }
 		}
 
 		reasbuf = malloc(total);
